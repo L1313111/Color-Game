@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>字色挑战</title>
+    <style>
+        /* 初始界面 */
+        #startScreen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #f0f8ff;
+        }
+        #gameTitle {
+            font-size: 80px;
+            margin-bottom: 50px;
+        }
+        #gameTitle span:nth-child(1) { color: blue; }
+        #gameTitle span:nth-child(2) { color: red; }
+        #gameTitle span:nth-child(3) { color: green; }
+        #gameTitle span:nth-child(4) { color: orange; }
+        #startButton {
+            font-size: 60px;
+            padding: 20px 40px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+        }
+
+        /* 游戏界面 */
+        #gameContainer {
+            display: none;
+            text-align: center;
+            padding: 20px;
+            position: relative;
+        }
+        #question {
+            font-size: 150px;
+            margin: 40px;
+        }
+        #buttons {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        .color-btn {
+            font-size: 25px;
+            margin: 10px;
+            padding: 10px 20px;
+            border: 2px solid #666;
+            cursor: pointer;
+            background: white !important;
+            color: black !important;
+        }
+        #timers {
+            font-size: 20px;
+            margin: 10px;
+        }
+
+        /* 正常结束界面 */
+        #endScreen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #f0f8ff;
+        }
+        .end-title {
+            font-size: 80px;
+            margin-bottom: 30px;
+            color: #333;
+        }
+        .final-score {
+            font-size: 60px;
+            margin-bottom: 50px;
+            color: #ff5722;
+        }
+
+        /* 强制结束界面 */
+        #instantEndScreen {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background: #f0f8ff;
+        }
+
+        /* 立即结束按钮 */
+        #instantEndBtn {
+            position: fixed;
+            right: 20px;
+            bottom: 20px;
+            padding: 10px 20px;
+            background: #ff4444;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 100;
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            margin: 5px;
+            background: #555;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <!-- 初始界面 -->
+    <div id="startScreen">
+        <div id="gameTitle">
+            <span>字</span><span>色</span><span>挑</span><span>战</span>
+        </div>
+        <button id="startButton">开始游戏</button>
+    </div>
+
+    <!-- 游戏界面 -->
+    <div id="gameContainer">
+        <button id="instantEndBtn">立即结束</button>
+        <div id="score">分数：0</div>
+        <div id="timers">
+            <div id="global-timer">总剩余时间：90秒</div>
+            <div id="local-timer">本题剩余：5秒</div>
+        </div>
+        <div id="question">红</div>
+        <div id="buttons">
+            <button class="color-btn" data-color="red">红</button>
+            <button class="color-btn" data-color="blue">蓝</button>
+            <button class="color-btn" data-color="green">绿</button>
+            <button class="color-btn" data-color="yellow">黄</button>
+        </div>
+    </div>
+
+    <!-- 正常结束界面 -->
+    <div id="endScreen">
+        <div class="end-title">游戏结束</div>
+        <div class="final-score" id="finalScore">最终得分：0</div>
+        <div>
+            <button class="control-btn" id="restartBtn">再来一次</button>
+            <button class="control-btn" id="backHomeBtn">返回主页</button>
+        </div>
+    </div>
+
+    <!-- 强制结束界面 -->
+    <div id="instantEndScreen">
+        <div class="end-title">游戏结束</div>
+        <div class="final-score" id="instantFinalScore">得分：0</div>
+        <button class="control-btn" id="instantBackHomeBtn">返回主页</button>
+    </div>
+
+    <script>
+        // 游戏配置
+        let score = 0;
+        let globalTime = 90;
+        let localTime = 5;
+        let globalTimer, localTimer;
+        const colors = ["red", "blue", "green", "yellow"];
+        const words = ["红", "蓝", "绿", "黄"];
+        const colorMap = { "红":"red", "蓝":"blue", "绿":"green", "黄":"yellow" };
+
+        // 洗牌算法
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        // 生成题目
+        function newQuestion() {
+            clearInterval(localTimer);
+            localTime = 5;
+            document.getElementById("local-timer").textContent = "本题剩余：5秒";
+
+            // 生成不匹配题目
+            const randomWord = words[Math.floor(Math.random() * words.length)];
+            const excludeColor = colorMap[randomWord];
+            const availableColors = colors.filter(c => c !== excludeColor);
+            const randomColor = availableColors[Math.floor(Math.random() * availableColors.length)];
+
+            document.getElementById("question").textContent = randomWord;
+            document.getElementById("question").style.color = randomColor;
+
+            // 随机排列按钮
+            const buttons = Array.from(document.getElementById("buttons").children);
+            shuffleArray(buttons);
+            document.getElementById("buttons").innerHTML = "";
+            buttons.forEach(btn => document.getElementById("buttons").appendChild(btn));
+        }
+
+        // 游戏控制
+        function startGame() {
+            score = 0;
+            globalTime = 90;
+            document.getElementById("score").textContent = "分数：0";
+            document.getElementById("global-timer").textContent = "总剩余时间：90秒";
+            
+            document.getElementById("startScreen").style.display = "none";
+            document.getElementById("endScreen").style.display = "none";
+            document.getElementById("instantEndScreen").style.display = "none";
+            document.getElementById("gameContainer").style.display = "block";
+
+            clearInterval(globalTimer);
+            clearInterval(localTimer);
+            globalTimer = setInterval(() => {
+                if (--globalTime <= 0) endGame();
+                document.getElementById("global-timer").textContent = `总剩余时间：${globalTime}秒`;
+            }, 1000);
+            
+            newQuestion();
+        }
+
+        function handleAnswer(selectedColor) {
+            const correctColor = document.getElementById("question").style.color;
+            score += selectedColor === correctColor ? 10 : -10;
+            document.getElementById("score").textContent = `分数：${score}`;
+            if (selectedColor !== correctColor) alert(`答错了！正确答案是：${correctColor}`);
+            newQuestion();
+        }
+
+        function handleTimeout() {
+            score -= 10;
+            document.getElementById("score").textContent = `分数：${score}`;
+            alert("时间到！");
+            newQuestion();
+        }
+
+        function endGame() {
+            clearInterval(globalTimer);
+            clearInterval(localTimer);
+            document.getElementById("gameContainer").style.display = "none";
+            document.getElementById("endScreen").style.display = "flex";
+            document.getElementById("finalScore").textContent = `最终得分：${score}`;
+        }
+
+        // 事件绑定
+        document.getElementById("startButton").addEventListener("click", startGame);
+        document.getElementById("restartBtn").addEventListener("click", startGame);
+        document.getElementById("backHomeBtn").addEventListener("click", () => {
+            document.getElementById("endScreen").style.display = "none";
+            document.getElementById("startScreen").style.display = "flex";
+        });
+        document.getElementById("instantEndBtn").addEventListener("click", () => {
+            clearInterval(globalTimer);
+            clearInterval(localTimer);
+            document.getElementById("gameContainer").style.display = "none";
+            document.getElementById("instantEndScreen").style.display = "flex";
+            document.getElementById("instantFinalScore").textContent = `得分：${score}`;
+        });
+        document.getElementById("instantBackHomeBtn").addEventListener("click", () => {
+            document.getElementById("instantEndScreen").style.display = "none";
+            document.getElementById("startScreen").style.display = "flex";
+        });
+        document.querySelectorAll('.color-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                handleAnswer(this.getAttribute('data-color'));
+            });
+        });
+    </script>
+</body>
+</html>
